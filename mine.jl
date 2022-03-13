@@ -72,12 +72,12 @@ module Mine
 					end
 				catch e
 					println(e)
-					printp("Error occured, restarting in 3s.", true)
+					printp("Error occured, restarting in 3s.", :red)
 					sleep(3)
 				end
 			end
 		catch e
-			printp("Error occured: $(e), restarting in 5s.")
+			printp("Error occured: $(e), restarting in 5s.", :red)
 			sleep(5)
 		end
 	end	
