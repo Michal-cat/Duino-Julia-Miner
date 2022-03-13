@@ -1,66 +1,84 @@
 module Mine
 	using Sockets
 	using SHA
+	using Nettle
 	using JSON
 	using Dates
 	using HTTP
+
+	username = "Michalpy"
+	miner_identifier = "Julia PC Miner"
+	mining_key = "None"
+
+	function printp(text::String, color::Union{Symbol,Int}=:normal)
+		printstyled("[$(now())] [JULIA-MINER] : $(text)\n"; color = color)
+	end	
 	function get_pool()
-		response = HTTP.request(
-						:GET, 
-						"https://server.duinocoin.com/getPool", 
-						Dict(
-							"User-Agent" => "Julia pc miner",
-							"Content-Type" => "application/json",
-						)
-					)
+		# Function for getting fastest duino node
+		response = HTTP.request(:GET, "https://server.duinocoin.com/getPool", Dict("User-Agent" => "Julia pc miner","Content-Type" => "application/json",))
 		response_json = JSON.parse(String(copy(response.body)); dicttype=Dict{Symbol, Any})
 		return response_json[:ip], response_json[:port], response_json[:name]
 	end
-
-	username = "Michalpy"
-	function run()
-		ip, port, pool = get_pool()
-		socket = Sockets.connect(ip, port)
-		println("Connected to $(pool)")
-		server_ver = String(read(socket, 3))
-		println("Server is on version: ", server_ver)
-		while true
+	while true
+		try
+			# Connecting to duino node
+			printp("Searching for fastest connection to server")
+			ip = "server.duinocoin.com"
+			port = 2813
+			pool = "default_pool"
 			try
-				write(socket, string("JOB,", String(username), ",Julia PC miner"))
-				println("Looking for job...")
-				job = String(read(socket, 87))
-				job = split(job, ",")
-				if length(job) <= 2 continue end
-				println(job)
-				lastBlockHash = job[1]
-				result = job[2]
-				difficulty = parse(Int32, job[3]) * 100
-				hashing_start_time = now()
-				for i = 0 : (100 * difficulty + 1)
-					stringToHash = string(lastBlockHash, string.(i-1))
-					ducos1 = bytes2hex(sha1(stringToHash))
-					if ducos1 == result
-						hashing_stop_time = now()
-						timeDifference = datetime2unix(hashing_stop_time) - datetime2unix(hashing_start_time)
-						hashrate = i / timeDifference
-						write(socket, string(i, ",,Julia_Miner"))
-						feedback = String(read(socket, 4))
-						println(feedback)
-						if contains(feedback, "00")
-							println("Accepted share ", i, "\tDifficulty ", difficulty)
-							break
-						else
-							println("Rejected share ", i, "\tDifficulty ", difficulty)
-							break
+				ip, port, pool = get_pool()
+			catch e
+				printp("Using default server port and address", :red)
+			end
+			socket = connect(ip, port)
+			printp("Fastest connection found in $(pool)", :yellow)
+			server_version = String(read(socket, 3))
+			printp("Server version: $(server_version)", :yellow)
+			# Mining
+			while true
+				try
+					write(socket, "JOB,$(username),LOW,$(mining_key)")
+					# Receive work
+					job = String(read(socket, 88))
+					job = split(job, ",")
+					difficulty = job[3]
+					hashing_start_time = now()
+					for result in range(0, (100 * parse(Int64, difficulty)) + 1)
+						# Calculate hash
+						string_to_hash = string(job[1], string.(result))
+						ducos1 = bytes2hex(sha1(ascii(string_to_hash)))
+						# If hash is solved
+						if job[2] == ducos1
+							# Calculate hashrate
+							hashing_stop_time = now()
+							timeDifference = datetime2unix(hashing_stop_time) - datetime2unix(hashing_start_time)
+							hashrate = result / timeDifference
+							# Return result
+							write(socket, "$(result),$(hashrate),Julia_PC_Miner,$(miner_identifier)")
+							# Check feedback
+							feedback = String(read(socket, 5))
+							if contains(feedback, "GOOD")
+								printp(string("Accepted share ",result," Hashrate ", (hashrate/1000.0),"kH/s ","Difficulty ",replace(difficulty, "\n" => "")), :green)
+								break
+							elseif contains(feedback,"BAD")
+								printp(string("Rejected share ",result," Hashrate ", (hashrate/1000.0),"kH/s ","Difficulty ",replace(difficulty, "\n" => "")), :red)
+								break
+							else 
+								printp("Corrupted feedback ($(feedback))", :red)
+								break
+							end
 						end
 					end
-					i += 1
+				catch e
+					println(e)
+					printp("Error occured, restarting in 3s.", true)
+					sleep(3)
 				end
-			catch e
-				println("Error to $(e)")
-				break
-			 end
+			end
+		catch e
+			printp("Error occured: $(e), restarting in 5s.")
+			sleep(5)
 		end
-	end
-	run()
+	end	
 end
