@@ -1,7 +1,6 @@
 module Mine
 	using Sockets
 	using SHA
-	using Nettle
 	using JSON
 	using Dates
 	using HTTP
