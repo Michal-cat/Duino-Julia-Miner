@@ -9,7 +9,7 @@ module Mine
 	miner_identifier = "Julia PC Miner"
 	mining_key = "None"
 
-	function printp(text::String, color::Union{Symbol,Int}=:normal)
+	function log(text::String, color::Union{Symbol,Int}=:normal)
 		printstyled("[$(now())] [JULIA-MINER] : $(text)\n"; color = color)
 	end	
 	function get_pool()
@@ -21,19 +21,19 @@ module Mine
 	while true
 		try
 			# Connecting to duino node
-			printp("Searching for fastest connection to server")
+			log("Searching for fastest connection to server")
 			ip = "server.duinocoin.com"
 			port = 2813
 			pool = "default_pool"
 			try
 				ip, port, pool = get_pool()
 			catch e
-				printp("Using default server port and address", :red)
+				log("Using default server port and address", :red)
 			end
 			socket = connect(ip, port)
-			printp("Fastest connection found in $(pool)", :yellow)
+			log("Fastest connection found in $(pool)", :yellow)
 			server_version = String(read(socket, 3))
-			printp("Server version: $(server_version)", :yellow)
+			log("Server version: $(server_version)", :yellow)
 			# Mining
 			while true
 				try
@@ -58,25 +58,25 @@ module Mine
 							# Check feedback
 							feedback = String(read(socket, 5))
 							if contains(feedback, "GOOD")
-								printp(string("Accepted share ",result," Hashrate ", (hashrate/1000.0),"kH/s ","Difficulty ",replace(difficulty, "\n" => "")), :green)
+								log(string("Accepted share ",result," Hashrate ", (hashrate/1000.0),"kH/s ","Difficulty ",replace(difficulty, "\n" => "")), :green)
 								break
 							elseif contains(feedback,"BAD")
-								printp(string("Rejected share ",result," Hashrate ", (hashrate/1000.0),"kH/s ","Difficulty ",replace(difficulty, "\n" => "")), :red)
+								log(string("Rejected share ",result," Hashrate ", (hashrate/1000.0),"kH/s ","Difficulty ",replace(difficulty, "\n" => "")), :red)
 								break
 							else 
-								printp("Corrupted feedback ($(feedback))", :red)
+								log("Corrupted feedback ($(feedback))", :red)
 								break
 							end
 						end
 					end
 				catch e
 					println(e)
-					printp("Error occured, restarting in 3s.", :red)
+					log("Error occured, restarting in 3s.", :red)
 					sleep(3)
 				end
 			end
 		catch e
-			printp("Error occured: $(e), restarting in 5s.", :red)
+			log("Error occured: $(e), restarting in 5s.", :red)
 			sleep(5)
 		end
 	end	
