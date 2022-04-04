@@ -5,9 +5,9 @@ module Mine
 	using Dates
 	using HTTP
 
-	username = "Michalpy"
+	username = "Michalpy" #Put here your duino username
 	miner_identifier = "Julia PC Miner"
-	mining_key = "None"
+	mining_key = "None" #Put here your mining key
 
 	function log(text::String, color::Union{Symbol,Int}=:normal)
 		printstyled("[$(now())] [JULIA-MINER] : $(text)\n"; color = color)
