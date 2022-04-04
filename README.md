@@ -1,2 +1,2 @@
 # Duino-Julia-Miner
-Duino coin minner written in Julia
+Duino coin miner written in Julia
